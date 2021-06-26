@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
     // 3. 发送数据
     char sendbuf[1024] = {0};
     char recvbuf[1024] = {0};
+    // 等待控制台输入
     while (fgets(sendbuf, sizeof sendbuf, stdin) != NULL) {
         write(clientfd, sendbuf, strlen(sendbuf)); // 将sendbuf写入缓冲区
         read(clientfd, recvbuf, sizeof recvbuf);

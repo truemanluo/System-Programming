@@ -13,6 +13,24 @@
 #define PORT "3490"
 #define ERR_EXIT(m) do {  perror(m);  exit(EXIT_FAILURE); } while(0);
 
+void do_service(int connfd) {
+    char recvbuf[1024]; // 接收缓冲区
+    while (1) {
+        memset(recvbuf, 0, sizeof recvbuf);
+        int ret = read(connfd, recvbuf, sizeof recvbuf);
+        if (ret == 0) {
+            std::cout << "client closed!" << std::endl;
+            break;
+        }
+        else if (ret == -1) {
+            ERR_EXIT("read");
+        }
+        fputs(recvbuf, stdout);
+        write(connfd, recvbuf, ret);
+    }
+}
+
+
 int main()
 {
     // 0. 初始化getaddrinfo
@@ -66,7 +84,6 @@ int main()
     freeaddrinfo(result);
 
     // 5. 数据交换
-    char recvbuf[1024]; // 接收缓冲区
 
     // 4. 创建连接
     int connfd;
@@ -92,13 +109,9 @@ int main()
         // 在子进程中进行数据传输
         else {
             close(listenfd);
-            while (1) {
-                memset(recvbuf, 0, sizeof recvbuf);
-                int ret = read(connfd, recvbuf, sizeof recvbuf);
-                fputs(recvbuf, stdout);
-                write(connfd, recvbuf, ret);
-            }
-            
+            do_service(connfd);
+            // 如果子进程退出循环，则退出子进程，否则子进程会跟父进程一样进行监听
+            exit(EXIT_SUCCESS);
         }
     }
     // 6. 断开连接
