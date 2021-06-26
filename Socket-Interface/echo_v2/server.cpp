@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <iostream>
 
 #define PORT "3490"
 #define ERR_EXIT(m) do {  perror(m);  exit(EXIT_FAILURE); } while(0);
@@ -62,29 +63,44 @@ int main()
         ERR_EXIT("listen failed.");
     }
 
-    // 4. Accept
-    struct sockaddr_in peeraddr;
-    socklen_t peerlen = sizeof peeraddr;
-    int connfd;
-    if ((connfd = accept(listenfd, (struct sockaddr *) &peeraddr, &peerlen)) < 0) {
-        ERR_EXIT("accept");
-    }
-
-    printf("ip = %s, ", inet_ntoa(peeraddr.sin_addr));
-    printf("port = %d\n", ntohs(peeraddr.sin_port));
-
     freeaddrinfo(result);
 
     // 5. 数据交换
-    char recvbuf[1024];
-    while (1)
-    {
-        memset(recvbuf, 0, sizeof recvbuf);
-        int ret = read(connfd, recvbuf, sizeof recvbuf);
-        fputs(recvbuf, stdout);
-        write(connfd, recvbuf, ret);
-    }
+    char recvbuf[1024]; // 接收缓冲区
 
+    // 4. 创建连接
+    int connfd;
+    struct sockaddr_in peeraddr;
+    socklen_t peerlen = sizeof peeraddr;
+    pid_t pid;
+    while (1)
+    {        
+        if ((connfd = accept(listenfd, (struct sockaddr *) &peeraddr, &peerlen)) < 0) {
+            ERR_EXIT("accept");
+        }
+        printf("ip = %s, ", inet_ntoa(peeraddr.sin_addr));
+        printf("port = %d\n", ntohs(peeraddr.sin_port));
+        std::cout << "connfd: " << connfd << std::endl;
+        if ((pid = fork()) < 0) {
+            ERR_EXIT("fork");
+        }
+
+        // 在父进程中处理监听
+        if (pid != 0) {
+            close(connfd);
+        }
+        // 在子进程中进行数据传输
+        else {
+            close(listenfd);
+            while (1) {
+                memset(recvbuf, 0, sizeof recvbuf);
+                int ret = read(connfd, recvbuf, sizeof recvbuf);
+                fputs(recvbuf, stdout);
+                write(connfd, recvbuf, ret);
+            }
+            
+        }
+    }
     // 6. 断开连接
     close(connfd);
     close(listenfd);
