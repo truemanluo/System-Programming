@@ -65,13 +65,24 @@
 
 
 ### Epoll的两种触发模式
+- 两种事件
+    - `EPOLLIN`事件
+      - 低电平：内核中的socket接收缓冲区为**空**
+      - 高电平：内核中的socket接收缓冲区**不为空**
+    - `EPOLLOUT`事件
+      - 低电平：内核中的socket发送缓冲区**满**
+      - 高电平：内核中的socket发送缓冲区**不满**
 
 - EPOLLLT(epoll level triger)
 
-    完全靠`kernel epoll`驱动，应用程序只需要处理从`epoll_wait`返回的fds，这些fds被认为是处于就绪状态
+    高电平触发。完全靠`kernel epoll`驱动，应用程序只需要处理从`epoll_wait`返回的fds，这些fds被认为是处于就绪状态
 
 - EPOLLET(epoll edge triger)
 
+    边沿触发条件：
+    - 低电平-->高电平
+    - 高电平-->低电平
+  
     此模式下，系统仅仅通知应用程序哪些fds从空闲状态变成就绪状态，**一旦fd变成就绪状态，`epoll`将不再关注这个fd的任何状态信息**，（从`epoll`队列移除）直到应用程序通过读写操作触发`EAGAIN`状态，`epoll`认为这个fd又变为空闲状态，那么`epoll`又重新关注这个`fd`的状态变化（重新加入`epoll`队列）
 
 > EPOLLET需要应用程序维护一个就绪队列（需要将读写置为非阻塞模式，以便能触发`EAGAIN`状态，重新将fd加入`epoll`队列），而EPOLLLT由内核维护。在EPOLLET模式下，队列中的fds是在减少的，所以在大并发的系统中，EPPLLET更有优势，但对程序员的要求更高
